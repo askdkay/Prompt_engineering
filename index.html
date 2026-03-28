@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dkay-PromptLab — AI Prompt Enhancer</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <!-- React + Babel CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              mono: ['DM Mono', 'monospace'],
+              display: ['Syne', 'sans-serif'],
+            },
+          }
+        }
+      };
+    </script>
+
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --bg: #07080a;
+        --surface: #0d0f12;
+        --surface2: #12151a;
+        --border: #1c1f26;
+        --border2: #252930;
+        --muted: #2e3340;
+        --dim: #5c6370;
+        --subtle: #8b949e;
+        --text: #e6eaf0;
+        --accent: #4f8ef7;
+        --accent-dim: rgba(79, 142, 247, 0.15);
+        --accent-glow: rgba(79, 142, 247, 0.25);
+        --green: #3fb950;
+        --red: #f85149;
+        --purple: #a371f7;
+      }
+
+      html,
+      body {
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      body {
+        font-family: 'DM Mono', monospace;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+
+      #root {
+        position: relative;
+        z-index: 1;
+      }
+
+      /* Animated background grid */
+      .grid-bg {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background-image:
+          linear-gradient(rgba(79, 142, 247, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(79, 142, 247, 0.03) 1px, transparent 1px);
+        background-size: 48px 48px;
+        mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, black 40%, transparent 100%);
+      }
+
+      /* Glow orbs */
+      .orb {
+        position: fixed;
+        border-radius: 50%;
+        filter: blur(100px);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .orb-1 {
+        width: 500px;
+        height: 400px;
+        top: -120px;
+        left: -80px;
+        background: radial-gradient(circle, rgba(79, 142, 247, 0.07) 0%, transparent 70%);
+        animation: float1 20s ease-in-out infinite alternate;
+      }
+
+      .orb-2 {
+        width: 400px;
+        height: 350px;
+        bottom: -100px;
+        right: -60px;
+        background: radial-gradient(circle, rgba(163, 113, 247, 0.06) 0%, transparent 70%);
+        animation: float2 24s ease-in-out infinite alternate;
+      }
+
+      @keyframes float1 {
+        from {
+          transform: translate(0, 0);
+        }
+
+        to {
+          transform: translate(60px, 40px);
+        }
+      }
+
+      @keyframes float2 {
+        from {
+          transform: translate(0, 0);
+        }
+
+        to {
+          transform: translate(-50px, -60px);
+        }
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        transition: border-color 0.2s;
+      }
+
+      .grad-border {
+        border-radius: 14px;
+        padding: 1px;
+        background: linear-gradient(135deg, rgba(79, 142, 247, 0.35), rgba(163, 113, 247, 0.2), rgba(255, 255, 255, 0.04));
+      }
+
+      .grad-border-inner {
+        background: var(--surface);
+        border-radius: 13px;
+      }
+
+      textarea {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.85rem;
+        line-height: 1.75;
+        resize: none;
+        outline: none;
+        caret-color: var(--accent);
+        transition: box-shadow 0.2s;
+      }
+
+      textarea:focus {
+        box-shadow: 0 0 0 1px rgba(79, 142, 247, 0.4), 0 4px 20px rgba(79, 142, 247, 0.07);
+      }
+
+      input[type="password"],
+      input[type="text"] {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.82rem;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+
+      input:focus {
+        border-color: rgba(79, 142, 247, 0.5) !important;
+        box-shadow: 0 0 0 1px rgba(79, 142, 247, 0.2);
+      }
+
+      .btn-primary {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(135deg, #3b7de8, #2563eb);
+        color: white;
+        border: none;
+        font-family: 'DM Mono', monospace;
+        font-size: 0.83rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+        box-shadow: 0 0 24px rgba(79, 142, 247, 0.3), 0 1px 2px rgba(0, 0, 0, 0.4);
+      }
+
+      .btn-primary:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 0 32px rgba(79, 142, 247, 0.45), 0 2px 8px rgba(0, 0, 0, 0.4);
+      }
+
+      .btn-primary:active:not(:disabled) {
+        transform: scale(0.97);
+      }
+
+      .btn-primary:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      .btn-primary::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 50%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+        transform: skewX(-20deg);
+        transition: left 0.5s;
+      }
+
+      .btn-primary:hover:not(:disabled)::after {
+        left: 160%;
+      }
+
+      .btn-sec {
+        background: transparent;
+        border: 1px solid var(--border2);
+        color: var(--dim);
+        font-family: 'DM Mono', monospace;
+        font-size: 0.78rem;
+        cursor: pointer;
+        transition: border-color 0.15s, color 0.15s, background 0.15s;
+      }
+
+      .btn-sec:hover {
+        border-color: var(--muted);
+        color: var(--subtle);
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .btn-copy {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border2);
+        color: var(--dim);
+        font-family: 'DM Mono', monospace;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+
+      .btn-copy:hover:not(:disabled) {
+        border-color: var(--muted);
+        color: var(--subtle);
+      }
+
+      .btn-copy.copied {
+        background: rgba(63, 185, 80, 0.1);
+        border-color: rgba(63, 185, 80, 0.3);
+        color: var(--green);
+      }
+
+      .btn-copy:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+
+      textarea::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      textarea::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      textarea::-webkit-scrollbar-thumb {
+        background: var(--muted);
+        border-radius: 2px;
+      }
+
+      .field-label {
+        font-size: 0.68rem;
+        font-weight: 500;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--dim);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding-top: 2px;
+        padding: 0px 8px 0px 8px;
+        border-radius: 4px;
+        font-size: 0.63rem;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .badge-blue {
+        background: rgba(79, 142, 247, 0.12);
+        border: 1px solid rgba(79, 142, 247, 0.25);
+        color: #7aabff;
+      }
+
+      .badge-green {
+        background: rgba(63, 185, 80, 0.12);
+        border: 1px solid rgba(63, 185, 80, 0.25);
+        color: #3fb950;
+      }
+
+      .badge-red {
+        background: rgba(248, 81, 73, 0.12);
+        border: 1px solid rgba(248, 81, 73, 0.25);
+        color: #f85149;
+      }
+
+      .badge-purple {
+        background: rgba(163, 113, 247, 0.12);
+        border: 1px solid rgba(163, 113, 247, 0.25);
+        color: #b08bfa;
+      }
+
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(16px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .anim {
+        animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+
+      .d1 {
+        animation-delay: 0.04s;
+      }
+
+      .d2 {
+        animation-delay: 0.10s;
+      }
+
+      .d3 {
+        animation-delay: 0.17s;
+      }
+
+      .d4 {
+        animation-delay: 0.24s;
+      }
+
+      .d5 {
+        animation-delay: 0.30s;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .spin {
+        animation: spin 0.9s linear infinite;
+      }
+
+      @keyframes shimmer {
+        from {
+          background-position: -600px 0;
+        }
+
+        to {
+          background-position: 600px 0;
+        }
+      }
+
+      .skel {
+        height: 11px;
+        border-radius: 4px;
+        margin-bottom: 9px;
+        background: linear-gradient(90deg, var(--surface2) 25%, var(--border2) 50%, var(--surface2) 75%);
+        background-size: 1200px 100%;
+        animation: shimmer 1.6s infinite;
+      }
+
+      @keyframes shake {
+
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+
+        20%,
+        60% {
+          transform: translateX(-6px);
+        }
+
+        40%,
+        80% {
+          transform: translateX(6px);
+        }
+      }
+
+      .shake {
+        animation: shake 0.4s ease-in-out;
+      }
+
+      @keyframes copyFlash {
+        0% {
+          background: rgba(79, 142, 247, 0.12);
+        }
+
+        100% {
+          background: transparent;
+        }
+      }
+
+      .copy-flash {
+        animation: copyFlash 0.7s ease-out;
+        border-radius: 8px;
+      }
+
+      select {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.75rem;
+        outline: none;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="grid-bg"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useRef, useCallback, useEffect } = React;
+
+      // ════════════════════════════════════════════════════════════════════════════
+      //  GEMINI CONFIG
+      //  Get a FREE API key at: https://aistudio.google.com/app/apikey
+      // ════════════════════════════════════════════════════════════════════════════
+      const MODELS = [
+        { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', badge: 'Newest & Free' },
+        { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', badge: 'Stable & Free' },
+        { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Lite', badge: 'Fastest' },
+      ];
+
+      // ════════════════════════════════════════════════════════════════════════════
+      //  SYSTEM PROMPT — tells Gemini how to engineer the user's raw idea
+      // ════════════════════════════════════════════════════════════════════════════
+      const SYSTEM_PROMPT = `You are Dkay-PromptLab, a world-class Prompt Engineering AI specialist.
+
+Your ONLY job is to take the user's short, vague input and rewrite it as a detailed, structured, expert-level prompt using the RCTFC framework (Role → Context → Task → Format → Constraints).
+
+## Output Structure (use ALL sections every time):
+
+### 🎭 ROLE
+Assign a precise expert persona relevant to the topic.
+Example: "You are a Senior Full-Stack Engineer specialising in React and Node.js."
+
+### 🌐 CONTEXT
+Add 3–4 specific context placeholders for the user to fill in.
+Format each as: [Placeholder description]
+Include things like target audience, tech stack, constraints, goals, etc.
+
+### 🎯 TASK
+Rewrite the user's raw idea as a clear, multi-part task with numbered sub-steps.
+Be specific about what the AI should produce.
+
+### 📐 OUTPUT FORMAT
+Specify exactly how the response should be structured:
+sections, headings, word count, code blocks, lists, tone, length, etc.
+
+### ⚙️ CONSTRAINTS
+Add 5–6 quality guardrails:
+1. No hallucination — do not fabricate statistics, names, or citations.
+2. No filler phrases like "Certainly!", "Great question!", or "As an AI…"
+3. Maintain a consistent tone throughout the entire response.
+4. Use proper Markdown formatting (headings, bold, code blocks where relevant).
+5. Ask a targeted clarifying question if anything is genuinely ambiguous.
+6. Every sentence must serve the stated objective — no padding.
+
+### ✅ BEGIN
+End with: "With the above role, context, and constraints clearly understood, provide your best, most thorough response now."
+
+## Rules:
+- Detect the domain automatically (tech, writing, data, design, marketing, education, legal, finance, etc.) and set the Role accordingly.
+- Output ONLY the engineered prompt — no preamble, no meta-commentary, no "Here is your enhanced prompt:".
+- Use Markdown ## headings and emoji exactly as shown.
+- Make every line genuinely useful.`;
+
+      // ════════════════════════════════════════════════════════════════════════════
+      //  callGemini — sends the user's idea to Gemini and returns enhanced prompt
+      // ════════════════════════════════════════════════════════════════════════════
+      async function callGemini(apiKey, modelId, userInput) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
+
+        const body = {
+          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: [{ role: 'user', parts: [{ text: userInput.trim() }] }],
+          generationConfig: { temperature: 0.85, topK: 40, topP: 0.95, maxOutputTokens: 1500 },
+        };
+
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.error?.message || `HTTP ${res.status} — check your API key.`);
+        }
+
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) throw new Error('Gemini returned no content. Please try again.');
+        return text;
+      }
+
+      // ════════════════════════════════════════════════════════════════════════════
+      //  App Component
+      // ════════════════════════════════════════════════════════════════════════════
+      function App() {
+        const [apiKey, setApiKey] = useState(() => localStorage.getItem('pf_key') || '');
+        const [showKey, setShowKey] = useState(false);
+        const [model, setModel] = useState('gemini-3-flash-preview');
+        const [input, setInput] = useState('');
+        const [output, setOutput] = useState('');
+        const [loading, setLoading] = useState(false);
+        const [error, setError] = useState('');
+        const [copied, setCopied] = useState(false);
+        const [flash, setFlash] = useState(false);
+        const [keyShake, setKeyShake] = useState(false);
+        const [wordCount, setWordCount] = useState(0);
+
+        const outputRef = useRef(null);
+        const inputRef = useRef(null);
+
+        // Persist key
+        useEffect(() => { if (apiKey) localStorage.setItem('pf_key', apiKey); }, [apiKey]);
+
+        // Word count
+        useEffect(() => {
+          setWordCount(output ? output.split(/\s+/).filter(Boolean).length : 0);
+        }, [output]);
+
+        // ── Enhance ─────────────────────────────────────────────────────────────
+        const handleEnhance = useCallback(async () => {
+          if (!input.trim()) { inputRef.current?.focus(); return; }
+          if (!apiKey.trim() || apiKey.length < 20) {
+            setKeyShake(true); setTimeout(() => setKeyShake(false), 500);
+            setError('Please enter a valid Gemini API key. Get one free at aistudio.google.com');
+            return;
+          }
+          setLoading(true); setError(''); setOutput('');
+          try {
+            const result = await callGemini(apiKey.trim(), model, input);
+            setOutput(result);
+            setTimeout(() => outputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+          } catch (e) {
+            setError(e.message || 'Something went wrong. Please try again.');
+          } finally {
+            setLoading(false);
+          }
+        }, [apiKey, model, input]);
+
+        const handleKeyDown = useCallback((e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleEnhance();
+        }, [handleEnhance]);
+
+        const handleCopy = useCallback(() => {
+          if (!output) return;
+          navigator.clipboard.writeText(output).then(() => {
+            setCopied(true); setFlash(true);
+            setTimeout(() => { setCopied(false); setFlash(false); }, 2200);
+          });
+        }, [output]);
+
+        const handleClear = useCallback(() => {
+          setInput(''); setOutput(''); setError('');
+        }, []);
+
+        const selectedModel = MODELS.find(m => m.id === model);
+
+        const EXAMPLES = [
+          'Write a blog about AI for beginners',
+          'Build a REST API in Node.js with auth',
+          'Design a mobile app onboarding flow',
+          'Analyse our Q4 sales data for trends',
+          'Create a 30-day social media strategy',
+          'Explain quantum computing simply',
+        ];
+
+        return (
+          <div style={{
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', padding: '40px 16px ',
+            position: 'relative', zIndex: 1,
+          }}>
+
+            {/* HEADER */}
+            <header style={{ width: '100%', maxWidth: '680px', marginBottom: '32px' }} className="anim">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
+                <div style={{
+                  width: '38px', height: '38px', borderRadius: '10px', flexShrink: 0,
+
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: 'solid 2px #ffffff29'
+                }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="100%" height="100%">
+                    <g fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M 30,290
+             C 70,260 100,260 130,280
+             C 160,300 180,310 210,270
+             C 230,240 250,180 280,180
+             C 310,180 330,280 350,340
+             C 365,385 375,400 395,400
+             C 430,400 470,263 510,210
+             L 588,106
+             M 510,210
+             C 525,190 545,185 570,210
+             C 600,245 640,310 700,310
+             C 740,310 760,295 780,280" />
+
+                      <circle cx="600" cy="90" r="20" />
+                    </g>
+
+                    <g fill="#ffffff">
+                      <circle cx="235" cy="375" r="8" />
+                      <circle cx="740" cy="180" r="8" />
+                    </g>
+                  </svg>
+
+
+                </div>
+                <span className="badge badge-green" style={{ fontFamily: '', fontWeight: 900, fontSize: '1rem', letterSpacing: '-0.01em', color: 'white' }}>
+                  <span className="badge badge-blue" style={{ color: '#4f8ef7' }}>Dkay</span>PromptLab
+                </span>
+                <span className="badge badge-blue" style={{ marginLeft: 'auto' }}>Gemini AI</span>
+              </div>
+
+              <p style={{
+                fontFamily: 'Syne', fontWeight: 800, fontSize: '1rem',
+                lineHeight: 1.2, letterSpacing: '-0.02em', color: 'white', marginBottom: '10px', display: 'flex', flexDirection: 'row',
+
+              }}>
+                <span style={{ marginRight: '10px' }} className="badge badge-green">rough idea</span>
+                →
+                <span style={{ marginLeft: '10px' }} className="badge badge-purple" > Prompt Engineering</span>
+              </p>
+              <p style={{ fontSize: '0.82rem', color: 'var(--dim)', lineHeight: 1.75 }}>
+                Type a short idea → Gemini AI rewrites it using the{' '}
+                <p style={{ color: 'var(--subtle)' }}>
+                  <span className="badge badge-blue">Role</span>
+                  →
+                  <span className="badge badge-green">Context </span>
+                  →
+                  <span className="badge badge-purple">Task </span>
+                  →
+                  <span className="badge badge-red">Format </span>
+                  →
+                  <span className="badge badge-blue">Constraints </span>
+                </p>{' '}
+                framework for dramatically better LLM outputs.
+              </p>
+            </header>
+
+            <main style={{ width: '100%', maxWidth: '680px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+              {/* API KEY CARD */}
+              <div className="card anim d1" style={{ padding: '16px 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <span className="field-label">Gemini API Key</span>
+                  <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer"
+                    style={{ fontSize: '0.68rem', color: 'var(--accent)', textDecoration: 'none', opacity: 0.8 }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                    onMouseLeave={e => e.currentTarget.style.opacity = '0.8'}>
+                    Get free key ↗
+                  </a>
+                </div>
+
+                <div className={keyShake ? 'shake' : ''} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {/* Key input */}
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <input
+                      type={showKey ? 'text' : 'password'}
+                      value={apiKey}
+                      onChange={e => { setApiKey(e.target.value); setError(''); }}
+                      placeholder="AIza••••••••••••••••••••••••••••••••••"
+                      style={{
+                        width: '100%', padding: '9px 36px 9px 12px',
+                        borderRadius: '8px', border: '1px solid var(--border2)',
+                        background: 'var(--surface2)', color: 'var(--text)',
+                      }}
+                    />
+                    <button onClick={() => setShowKey(s => !s)} style={{
+                      position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+                      background: 'none', border: 'none', cursor: 'pointer', color: 'var(--dim)', lineHeight: 0, padding: '2px',
+                    }}>
+                      {showKey
+                        ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                        : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                      }
+                    </button>
+                  </div>
+
+                  {/* Model select */}
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <select value={model} onChange={e => setModel(e.target.value)} style={{
+                      padding: '9px 28px 9px 12px', borderRadius: '8px',
+                      border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--subtle)',
+                    }}>
+                      {MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                    </select>
+                    <div style={{ position: 'absolute', right: '9px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--dim)', lineHeight: 0 }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9" /></svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="badge badge-purple">{selectedModel?.badge}</span>
+                  <span style={{ fontSize: '0.67rem', color: 'var(--muted)' }}>Key saved locally — never leaves your browser.</span>
+                </div>
+              </div>
+
+              {/* ERROR */}
+              {error && (
+                <div className="anim" style={{
+                  padding: '10px 14px', borderRadius: '8px',
+                  background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.25)',
+                  display: 'flex', alignItems: 'flex-start', gap: '8px',
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f85149" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: '1px' }}>
+                    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <span style={{ fontSize: '0.78rem', color: '#f85149', lineHeight: 1.6 }}>{error}</span>
+                </div>
+              )}
+
+              {/* INPUT CARD */}
+              <div className="grad-border anim d2">
+                <div className="grad-border-inner" style={{ padding: '18px 20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <span className="field-label">Your Idea</span>
+                    <span style={{ fontSize: '0.68rem', color: input.length > 800 ? 'var(--red)' : 'var(--muted)' }}>
+                      {input.length} / 1000
+                    </span>
+                  </div>
+
+                  <textarea
+                    ref={inputRef}
+                    rows={5}
+                    maxLength={1000}
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={"e.g. Write a blog about AI\ne.g. Build a login page in React\ne.g. Analyse our sales data"}
+                    style={{
+                      width: '100%', padding: '12px 14px', borderRadius: '10px',
+                      border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)',
+                    }}
+                  />
+
+                  <p style={{ fontSize: '0.68rem', color: 'var(--muted)', marginTop: '8px' }}>
+                    Tip: Press{' '}
+                    <kbd style={{ padding: '1px 6px', borderRadius: '4px', fontSize: '0.65rem', border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--subtle)' }}>⌘</kbd>
+                    {' '}+{' '}
+                    <kbd style={{ padding: '1px 6px', borderRadius: '4px', fontSize: '0.65rem', border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--subtle)' }}>Enter</kbd>
+                    {' '}to enhance instantly.
+                  </p>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '14px' }}>
+                    <button className="btn-primary" onClick={handleEnhance} disabled={loading || !input.trim()}
+                      style={{ padding: '10px 22px', borderRadius: '9px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {loading ? (
+                        <>
+                          <svg className="spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                          Generating…
+                        </>
+                      ) : (
+                        <>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+                          Enhance with Gemini
+                        </>
+                      )}
+                    </button>
+                    {(input || output) && (
+                      <button className="btn-sec" onClick={handleClear}
+                        style={{ padding: '10px 16px', borderRadius: '9px' }}>
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* OUTPUT CARD */}
+              <div ref={outputRef} className="card anim d3" style={{
+                border: output ? '1px solid rgba(79,142,247,0.25)' : '1px solid var(--border)',
+                transition: 'border-color 0.4s',
+              }}>
+                <div style={{ padding: '18px 20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="field-label">Enhanced Prompt</span>
+                      {output && !loading && (
+                        <span className="badge badge-green">
+                          <svg width="6" height="6" viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="6" r="5" /></svg>
+                          Ready
+                        </span>
+                      )}
+                    </div>
+                    <button className={`btn-copy ${copied ? 'copied' : ''}`} onClick={handleCopy}
+                      disabled={!output || loading}
+                      style={{ padding: '6px 12px', borderRadius: '7px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {copied ? (
+                        <>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                          Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {loading ? (
+                    <div style={{ padding: '4px 0' }}>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--accent)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <svg className="spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                        Gemini is engineering your prompt…
+                      </div>
+                      {[95, 80, 88, 65, 92, 70, 78, 85, 60, 72, 50, 68].map((w, i) => (
+                        <div key={i} className="skel" style={{ width: `${w}%`, opacity: Math.max(0.15, 1 - i * 0.07) }} />
+                      ))}
+                    </div>
+                  ) : output ? (
+                    <div className={flash ? 'copy-flash' : ''}>
+                      <textarea
+                        readOnly rows={22} value={output}
+                        style={{
+                          width: '100%', padding: '14px', borderRadius: '10px',
+                          border: '1px solid var(--border)', background: 'var(--bg)',
+                          color: '#c9d1d9', lineHeight: '1.8',
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 0', gap: '10px', color: 'var(--muted)' }}>
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" style={{ opacity: 0.35 }}>
+                        <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+                      </svg>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--dim)', textAlign: 'center', lineHeight: 1.7 }}>
+                        Your Gemini-enhanced prompt will appear here.<br />
+                        <span style={{ color: 'var(--muted)' }}>Enter an idea above and click "Enhance with Gemini".</span>
+                      </span>
+                    </div>
+                  )}
+
+                  {output && !loading && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
+                      {[`${wordCount} words`, `${output.length} chars`, `~${Math.round(output.length / 4)} tokens`, selectedModel?.label].map((s, i, arr) => (
+                        <React.Fragment key={i}>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--muted)' }}>{s}</span>
+                          {i < arr.length - 1 && <span style={{ fontSize: '0.68rem', color: 'var(--border2)' }}>·</span>}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* HOW IT WORKS */}
+              <div className="card anim d4" style={{ padding: '18px 20px' }}>
+                <p className="field-label" style={{ marginBottom: '14px' }}>How it works</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
+                  {[
+                    { n: '01', title: 'Type a rough idea', desc: 'As short as "write a blog about AI" — any domain works.', color: '#4f8ef7' },
+                    { n: '02', title: 'Gemini engineers it', desc: 'Injects Role, Context, Task, Format & Constraints for a rich structured prompt.', color: '#a371f7' },
+                    { n: '03', title: 'Paste & get better output', desc: 'Use the result in ChatGPT, Claude, or Gemini for dramatically better responses.', color: '#3fb950' },
+                  ].map(step => (
+                    <div key={step.n} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: '0.65rem', color: step.color, letterSpacing: '0.08em' }}>{step.n}</span>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text)', fontWeight: 500 }}>{step.title}</span>
+                      </div>
+                      <p style={{ fontSize: '0.72rem', color: 'var(--dim)', lineHeight: 1.65, paddingLeft: '24px' }}>{step.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* EXAMPLE CHIPS */}
+              <div className="anim d5">
+                <p className="field-label" style={{ marginBottom: '10px' }}>Try an example →</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {[
+                    'Write a blog about AI for beginners',
+                    'Build a REST API in Node.js with auth',
+                  ].map(ex => (
+                    <button key={ex}
+                      onClick={() => { setInput(ex); setOutput(''); setError(''); }}
+                      style={{
+                        padding: '6px 12px', borderRadius: '20px',
+                        background: 'var(--surface2)', border: '1px solid var(--border2)',
+                        color: 'var(--dim)', fontSize: '0.72rem', cursor: 'pointer',
+                        transition: 'all 0.15s', fontFamily: 'DM Mono, monospace',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(79,142,247,0.4)'; e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.background = 'rgba(79,142,247,0.06)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.color = 'var(--dim)'; e.currentTarget.style.background = 'var(--surface2)'; }}>
+                      {ex}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+            </main>
+
+            {/* FOOTER */}
+            {/* FOOTER */}
+            {/* PREMIUM FOOTER */}
+            <footer className="mt-5 pt-5">
+              {/* Glowing Gradient Top Border */}
+
+              <div className="mt-5 px-6 flex flex-col items-center gap-5">
+
+                {/* Footer Logo & Name */}
+                <div className="flex mt-10 pt-10 items-center gap-2 opacity-80 hover:opacity-100 transition-opacity">
+                  <div className="w-5 h-5 rounded  flex items-center justify-center shadow-[0_0_10px_rgba(79,142,247,0.3)]">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="100%" height="100%">
+                      <g fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M 30,290
+             C 70,260 100,260 130,280
+             C 160,300 180,310 210,270
+             C 230,240 250,180 280,180
+             C 310,180 330,280 350,340
+             C 365,385 375,400 395,400
+             C 430,400 470,263 510,210
+             L 588,106
+             M 510,210
+             C 525,190 545,185 570,210
+             C 600,245 640,310 700,310
+             C 740,310 760,295 780,280" />
+
+                        <circle cx="600" cy="90" r="20" />
+                      </g>
+
+                      <g fill="#ffffff">
+                        <circle cx="235" cy="375" r="8" />
+                        <circle cx="740" cy="180" r="8" />
+                      </g>
+                    </svg>
+                  </div>
+                  <span className="font-display font-semibold tracking-wide text-gray-200 text-sm">
+                    Dkay<span className="text-[#4f8ef7]">PromptLab</span>
+                  </span>
+                </div>
+
+                {/* Interactive Links (Pill Shaped) */}
+                <div className="flex flex-wrap justify-center items-center gap-4 text-sm">
+
+                  {/* Portfolio Button */}
+                  <a
+                    href="https://askdkay.netlify.app/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-5 py-2 rounded-full bg-[#12151a] border border-[#252930] hover:border-[#4f8ef7] hover:bg-[#4f8ef7]/10 transition-all duration-300 text-gray-400 hover:text-white group shadow-sm hover:shadow-[0_0_15px_rgba(79,142,247,0.15)]"
+                  >
+                    <svg className="group-hover:text-[#4f8ef7] transition-colors" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                    <span className="font-medium">Portfolio</span>
+                  </a>
+
+                  {/* GitHub Button */}
+                  <a
+                    href="https://github.com/askdkay"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-5 py-2 rounded-full bg-[#12151a] border border-[#252930] hover:border-gray-400 hover:bg-white/5 transition-all duration-300 text-gray-400 hover:text-white group shadow-sm hover:shadow-[0_0_15px_rgba(255,255,255,0.05)]"
+                  >
+                    <svg className="group-hover:text-white transition-colors" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+                    <span className="font-medium">GitHub</span>
+                  </a>
+
+                </div>
+
+                {/* Bottom Text & Credits */}
+                <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 mt-2 text-xs text-gray-500">
+                  <p>
+                    © 2026 Designed & Built by <span className="text-gray-300 font-semibold tracking-wide">Dkay</span>
+                  </p>
+
+                  <span className="hidden md:block w-1 h-1 rounded-full bg-gray-700"></span>
+
+                  <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-gray-300 transition-colors group">
+                    <span>Powered by</span>
+                    {/* Neon Badge */}
+                    <span className="px-2 py-0.5 rounded pl-1.5 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 text-[#7aabff] font-mono font-medium tracking-tight group-hover:border-blue-500/40 transition-colors flex items-center gap-1">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-blue-400"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>
+                      Gemini
+                    </span>
+                  </a>
+                </div>
+
+              </div>
+            </footer>
+          </div >
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+  </body>
+
+</html>
